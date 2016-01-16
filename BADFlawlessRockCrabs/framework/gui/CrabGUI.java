@@ -3,7 +3,7 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package scripts;
+package scripts.BADFlawlessRockCrabs.framework.gui;
 
 public class CrabGUI extends javax.swing.JFrame {
 

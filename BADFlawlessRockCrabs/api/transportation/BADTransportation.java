@@ -1,4 +1,4 @@
-package scripts;
+package scripts.BADFlawlessRockCrabs.api.transportation;
 
 import org.tribot.api.General;
 import org.tribot.api.types.generic.Condition;
@@ -16,13 +16,15 @@ import org.tribot.api2007.types.RSObject;
 import org.tribot.api2007.types.RSTile;
 import org.tribot.api2007.util.DPathNavigator;
 
-public class Transportation {
+import scripts.BADFlawlessRockCrabs.api.antiban.BADAntiBan;
+
+public class BADTransportation {
 	
-	private AntiBan anti_ban;
+	private BADAntiBan anti_ban;
 	
 	
-	Transportation() {
-		anti_ban = new AntiBan();
+	public BADTransportation() {
+		anti_ban = new BADAntiBan();
 	}
 	
     public void checkRun() {
@@ -33,13 +35,8 @@ public class Transportation {
     	}
     }  
     
-    public RSTile getTile(RSArea area, boolean check_run) {
-    	// check run since we are about to walk
-    	if (check_run) {
-    		checkRun();
-    	}
-    	
-    	return area.getRandomTile();
+    public boolean walkPath(RSTile[] path) {
+    	return Walking.walkPath(path);
     }
     
     public RSArea getAreaFromCoords(int x_min, int x_max, int y_min, int y_max, int floor) {
@@ -53,26 +50,6 @@ public class Transportation {
     	};
     	
     	return false;
-    }
-    
-    public boolean walkPath(RSTile[] path) {
-    	return Walking.walkPath(path);
-    }
-    
-    public boolean blindWalkToObject(RSObject[] obj) {
-		if (obj[0].isOnScreen() && validateWalk(obj[0].getPosition(), true)) {
-			return Walking.blindWalkTo(obj[0].getPosition());
-		}
-		
-		return false;
-	}
-    
-    public boolean blindWalkToNpc(RSNPC[] npcs) {
-        if (npcs.length > 0 && validateWalk(npcs[0].getPosition(), false)) {
-            return Walking.blindWalkTo(npcs[0].getPosition());
-        }
-        
-        return false;
     }
 	
 	public void iteratePath(RSTile[] path) {

@@ -1,8 +1,8 @@
-package scripts;
+package scripts.BADFlawlessRockCrabs.api.skills;
 
 import org.tribot.api2007.Skills;
 
-public class SkillTracker {
+public class BADSkillTracker {
 		
 		private long attack;
 		private long strength;
@@ -12,7 +12,7 @@ public class SkillTracker {
 		private Skills.SKILLS[] skills = {Skills.SKILLS.ATTACK, Skills.SKILLS.STRENGTH, Skills.SKILLS.HITPOINTS, Skills.SKILLS.DEFENCE, Skills.SKILLS.RANGED};
 
 
-		SkillTracker() {
+		public BADSkillTracker() {
 			attack = Skills.getXP(Skills.SKILLS.ATTACK);
 			strength = Skills.getXP(Skills.SKILLS.STRENGTH);
 			defence = Skills.getXP(Skills.SKILLS.DEFENCE);
@@ -63,6 +63,15 @@ public class SkillTracker {
 			total = (total-attack-range-hitpoints-strength-defence);
 			
 			return total;
+		}
+		
+		public boolean skillIsAtBase(Skills.SKILLS skill) {
+			// compare skill levels to actual level to see if we are boosted
+			if (Skills.getCurrentLevel(skill) == Skills.getActualLevel(skill)) {
+				return true;
+			}
+			
+			return false;
 		}
 		
 		

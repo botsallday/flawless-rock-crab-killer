@@ -1,13 +1,15 @@
-package scripts;
+package scripts.BADFlawlessRockCrabs.framework.flawlessrockcrabkiller;
 
 import org.tribot.script.Script;
-import org.tribot.script.ScriptManifest;
-import org.tribot.script.interfaces.Painting;
-
-import java.awt.Color;
-import java.awt.Font;
-import java.awt.Graphics;
-
+import scripts.BADFlawlessRockCrabs.api.antiban.BADAntiBan;
+import scripts.BADFlawlessRockCrabs.api.areas.BADAreas;
+import scripts.BADFlawlessRockCrabs.api.banking.BADBanking;
+import scripts.BADFlawlessRockCrabs.api.clicking.BADClicking;
+import scripts.BADFlawlessRockCrabs.api.conditions.BADConditions;
+import scripts.BADFlawlessRockCrabs.api.fcworldhopper.FCInGameHopper;
+import scripts.BADFlawlessRockCrabs.api.skills.BADSkillTracker;
+import scripts.BADFlawlessRockCrabs.api.transportation.BADTransportation;
+import scripts.BADFlawlessRockCrabs.framework.gui.CrabGUI;
 import org.tribot.api.DynamicClicking;
 import org.tribot.api.General;
 import org.tribot.api.Timing;
@@ -23,10 +25,8 @@ import org.tribot.api2007.Player;
 import org.tribot.api2007.Players;
 import org.tribot.api2007.Skills;
 import org.tribot.api2007.Walking;
-import org.tribot.api2007.WebWalking;
 import org.tribot.api2007.WorldHopper;
 import org.tribot.api2007.ext.Filters;
-import org.tribot.api2007.types.RSArea;
 import org.tribot.api2007.types.RSItem;
 import org.tribot.api2007.types.RSNPC;
 import org.tribot.api2007.types.RSNPCDefinition;
@@ -34,230 +34,123 @@ import org.tribot.api2007.types.RSObject;
 import org.tribot.api2007.types.RSPlayer;
 import org.tribot.api2007.types.RSTile;
 
-
-@ScriptManifest(authors = {"botsallday"}, category = "Combat", name = "FlawlessRockCrabKiller")
-
-// bank area
-// crabs area
-// tree safe area
-
-
-
-public class FlawlessRockCrabKiller extends Script implements Painting {
-	private static final long startTime = System.currentTimeMillis();
-    Font font = new Font("Verdana", Font.BOLD, 14);
+public class FlawlessRockCrabKillerCore extends Script {
 	
-	private Banker banker = new Banker();
-	private Transportation transport = new Transportation();
-	private AntiBan ab = new AntiBan();
-	private Clicking clicker = new Clicking();
-	private SkillTracker XP = new SkillTracker();
+	private BADBanking BANKER = new BADBanking();
+	private BADTransportation TRANSPORT = new BADTransportation();
+	private BADAntiBan AB = new BADAntiBan();
+	private BADClicking CLICKER = new BADClicking();
 	
-	private RSArea bank_area = new RSArea(new RSTile(2724, 3490, 0), new RSTile(2727, 3493, 0));
-	private RSArea refresh_crabs_area = new RSArea(new RSTile(2706, 3654, 0), new RSTile(2712, 3658, 0));
-	private RSArea rock_crabs_area = new RSArea(new RSTile(2697, 3711, 0), new RSTile(2719, 3727, 0));
-	private RSArea camelot_teleport_area = new RSArea(new RSTile(2754, 3473, 0), new RSTile(2763, 3481, 0));
-	private RSArea lumbridge_spawn_area = new RSArea(new RSTile(3217, 3210, 0), new RSTile(3224, 3224, 0));
-	private RSArea tunnel_area = new RSArea(new RSTile(2730, 3714, 0), new RSTile(2730, 3710, 0));
-	private RSTile tunnel_entrance = new RSTile(2773, 10162);
-	private RSArea checkpoint_one = new RSArea(new RSTile(2682, 3545, 0), new RSTile(2688, 3541, 0));
-	private RSArea checkpoint_two = new RSArea(new RSTile(2663, 3624, 0), new RSTile(2669, 3625, 0));
-	
-	private boolean use_potions;
-	private boolean refreshing;
-	private boolean execute;
+	private boolean USE_POTIONS;
+	private boolean REFRESHING;
+	private boolean EXECUTE = true;
 	private State state;
-	private long refresh_time = Timing.currentTimeMillis() + refreshRandom();
-	private int failed_wakes = 0;
-	private String food;
-	private String tab = "Camelot teleport";
-	private String potion = "Combat potion";
-	private CrabGUI gui = new CrabGUI();
-	
-	private Condition in_teleport_area = new Condition() {
-        @Override
-        public boolean active() {
-            // control cpu usage
-            General.sleep(100);
-            // ensure we have deposited items
-            return camelot_teleport_area.contains(Player.getPosition());
-        }
-	};
-	
-	private Condition attackable_crab = new Condition() {
-        @Override
-        public boolean active() {
-        	RSNPC[] crabs = crabs();
-            // control cpu usage
-            General.sleep(100);
-            
-            if (crabs.length > 0) {
-            	if ((!crabs[0].isInCombat() || crabs[0].isInteractingWithMe()) && (crabs[0].isMoving() || Combat.isUnderAttack())) {
-            		return true;
-            	}
-            }
-            
-            return false;
-        }
-	};
+	private long REFRESH_TIME = Timing.currentTimeMillis() + refreshRandom();
+	private int FAILED_WAKES = 0;
+	private String FOOD;
+	private String TAB = "Camelot teleport";
+	private String POTION = "Combat POTION";
+	private CrabGUI GUI = new CrabGUI();
+	private BADSkillTracker TRACKER = new BADSkillTracker();
 	
 	private Condition bad_items_deposited = new Condition() {
         @Override
         public boolean active() {
         	General.sleep(100);
-        	return Inventory.find(Filters.Items.nameNotEquals(food, tab)).length < 2;
+        	return Inventory.find(Filters.Items.nameNotEquals(FOOD, TAB)).length < 2;
         }
 	};
-	
-	private Condition tabs_withdrawn = new Condition() {
-        @Override
-        public boolean active() {
-        	General.sleep(100);
-        	return Inventory.getCount(tab) > 1;
-        }
-	};
-	
-	private Condition food_withdrawn = new Condition() {
-        @Override
-        public boolean active() {
-        	General.sleep(100);
-        	return Inventory.isFull();
-        }
-	};
-	
-	private Condition inside_tunnel = new Condition() {
-        @Override
-        public boolean active() {
-        	General.sleep(100);
-        	return Player.getPosition().distanceTo(tunnel_entrance.getPosition()) <= 1;
-        }
-	};
-	
-	private Condition outside_tunnel = new Condition() {
-        @Override
-        public boolean active() {
-        	General.sleep(100);
-        	return tunnel_area.contains(Player.getPosition());
-        }
-	};
-	
-	private Condition fighting = new Condition() {
-        @Override
-        public boolean active() {
-        	General.sleep(100);
-        	return Combat.isUnderAttack() || hasTarget();
-        }
-	};
-	
-	private Condition is_logged_in = new Condition() {
-        @Override
-        public boolean active() {
-        	General.sleep(100);
-        	return Login.getLoginState() != Login.STATE.LOGINSCREEN;
-        }
-	};
-	
-	private Condition potion_drank = new Condition() {
-        @Override
-        public boolean active() {
-        	General.sleep(100);
-        	return Skills.getActualLevel(Skills.SKILLS.ATTACK) < Skills.getCurrentLevel(Skills.SKILLS.ATTACK);
-        }
-	};
+
+	public boolean executing() {
+		return EXECUTE;
+	}
 	
 	@Override
 	public void run() {
-		
-		execute = true;
-		gui.setVisible(true);
-		while (gui.isVisible()) {
+		GUI.setVisible(true);
+		while (GUI.isVisible()) {
 			sleep(100);
 			println("Waiting for GUI");
 		}
 		setGuiVars();
-		ab.setHoverSkill(Skills.SKILLS.HITPOINTS);
-		// there are null objects that may cause a ban if examined in these locations
-		ab.ignore_examine = true;
+		AB.setHoverSkill(Skills.SKILLS.HITPOINTS);
 		
-		while (true) {
+		while (EXECUTE) {
 			sleep(50);
-			state = state();
-			
-			switch (state) {
+			switch (state()) {
 				case LOGIN:
-					Timing.waitCondition(is_logged_in, 10000);
+					Timing.waitCondition(BADConditions.isLoggedIn(), 10000);
 					break;
 				case TELEPORT:
 					if (teleport()) {
-						ab.handleItemInteractionDelay();
-	                    Timing.waitCondition(in_teleport_area, General.random(8000, 12000));
+						AB.handleItemInteractionDelay();
+	                    Timing.waitCondition(BADConditions.inArea(BADAreas.CAMELOT_TELEPORT_AREA), General.random(8000, 12000));
 					}
 					break;
 				case WALK_TO_BANK:
-					if (!banker.handleBanking(bank_area, true)) {
-						transport.walkCustomNavPath(bank_area.getRandomTile());
+					if (!BANKER.walkToBank(BADAreas.CAMELOT_BANK_AREA, true)) {
+						TRANSPORT.walkCustomNavPath(BADAreas.CAMELOT_BANK_AREA.getRandomTile());
 					}
 					break;
 				case WALK_TO_ROCKS:
 					walkToRocks();
 					break;
 				case WAITING:
-					ab.handleWait();
+					AB.handleWait();
 					break;
 				case WALKING:
-					ab.handleWait();
+					AB.handleWait();
 					break;
 				case WITHDRAW_TELEPORT:
-					if (!banker.withdrawItem(tab, 1)) {
-						if (!banker.hasItemInBank(tab)) {
-							execute = false;
+					if (!BANKER.withdraw(TAB, 1)) {
+						if (!BANKER.hasItem(TAB)) {
+							EXECUTE = false;
 						}
 					};
-					ab.handleItemInteractionDelay();
-                    Timing.waitCondition(tabs_withdrawn, General.random(3000, 5000));
+					AB.handleItemInteractionDelay();
+                    Timing.waitCondition(BADConditions.hasItem(TAB), General.random(3000, 5000));
 					break;
 				case WITHDRAW_FOOD:
-					if (!banker.withdrawItem(food, 28)) {
-						if (!banker.hasItemInBank(food)) {
-							execute = false;
+					if (!BANKER.withdraw(FOOD, 28)) {
+						if (!BANKER.hasItem(FOOD)) {
+							EXECUTE = false;
 						}
-					};
-					ab.handleItemInteractionDelay();
-                    Timing.waitCondition(food_withdrawn, General.random(3000, 5000));
-					break;
+					} else {
+						AB.handleItemInteractionDelay();
+	                    Timing.waitCondition(BADConditions.hasItem(FOOD), General.random(3000, 5000));
+					}
+                    break;
 				case WITHDRAW_POTIONS:
-					if (!banker.withdrawItem(potion, 1)) {
-						use_potions = false;
+					if (!BANKER.withdraw(POTION, 1)) {
+						USE_POTIONS = false;
 					};
-					ab.handleItemInteractionDelay();
+					AB.handleItemInteractionDelay();
 					break;
 				case REFRESH_CRABS:
-					transport.checkRun();
+					TRANSPORT.checkRun();
 					println("Refreshing crabs");
-					// refresh using the tunnel or forest
-					if (refreshTunnel()) {
-						println("Refreshing random");
-						resetRefreshTime();
-					} else if (refreshForest()) {
+					
+					if (refreshForest()) {
 						resetRefreshTime();
 					}
 					break;
 				case WAKE_CRAB:
-					transport.checkRun();
-					ab.handleNewObjectCombatDelay();
+					TRANSPORT.checkRun();
+					AB.handleNewObjectCombatDelay();
 					attemptToWakeCrab();
 					break;
 				case COMBAT:
 					eat();
-					if (use_potions) {
+					if (USE_POTIONS) {
 						checkPotion();
 					}
 					break;
 				case SOMETHING_WENT_WRONG:
-					execute = false;
+					EXECUTE = false;
 					break;
 				case DEAD:
 					println("You died!");
+					EXECUTE = false;
 					break;
 				case DEPOSIT_ITEMS:
 					if (depositBadItems()) {
@@ -283,15 +176,15 @@ public class FlawlessRockCrabKiller extends Script implements Painting {
 		}
 	}
 	
-  private State state() {
+  public State state() {
 
 	  // handle login state
 	  if (Login.getLoginState() == Login.STATE.LOGINSCREEN) {
 		  return State.LOGIN;
 	  }
 	  // handle death
-	  if (lumbridge_spawn_area.contains(Player.getPosition())) {
-		  execute = false;
+	  if (BADAreas.LUMBRIDGE_SPAWN_AREA.contains(Player.getPosition())) {
+		  EXECUTE = false;
 		  return State.DEAD;
 	  }
 	  // turn on auto retaliate if it isn't on
@@ -306,19 +199,19 @@ public class FlawlessRockCrabKiller extends Script implements Painting {
 			  return State.TOO_MANY_PLAYERS;
 		  }
 		  // determine if we should hop based on a cannon in our area
-		  if (detectCannon() && rock_crabs_area.contains(Player.getPosition())) {
+		  if (detectCannon() && BADAreas.EAST_ROCK_CRABS_AREA.contains(Player.getPosition())) {
 			  return State.CANNON_DETECTED;
 		  }
 		  // when out of food we must try to bank
 		  if (outOfFood() && !Banking.isInBank()) {
 			  // only teleport if needed
-			  if (banker.distanceToBank(bank_area.getRandomTile(), Player.getPosition()) > 50) {
+			  if (BANKER.distanceToBank(BADAreas.CAMELOT_BANK_AREA.getRandomTile(), Player.getPosition()) > 50) {
 				  return State.TELEPORT;
 			  }
 			  return State.WALK_TO_BANK;
 		  }
 		  // walk to bank if we have teleported
-		  if (camelot_teleport_area.contains(Player.getPosition())) {
+		  if (BADAreas.CAMELOT_TELEPORT_AREA.contains(Player.getPosition())) {
 			  return State.WALK_TO_BANK;
 		  }
 		  // handle getting supplies and leaving bank
@@ -333,7 +226,7 @@ public class FlawlessRockCrabKiller extends Script implements Painting {
 				  if (needsTeleport()) {
 					  return State.WITHDRAW_TELEPORT;
 				  }
-				  if (use_potions && needsPotions()) {
+				  if (USE_POTIONS && needsPotions()) {
 					  return State.WITHDRAW_POTIONS;
 				  }
 				  if (outOfFood() || !Inventory.isFull()) {
@@ -345,12 +238,12 @@ public class FlawlessRockCrabKiller extends Script implements Painting {
 			  }
 		  }
 		  // handle walking to crabs
-		  if (!atCrabs() && !refreshing && !Banking.isInBank()) {
+		  if (!atCrabs() && !REFRESHING && !Banking.isInBank()) {
 			  return State.WALK_TO_ROCKS;
 		  }
-		  // handle refreshing crabs
-		  if ((Timing.currentTimeMillis() >= refresh_time) || refreshing || failed_wakes > 8) {
-			  refreshing = true;
+		  // handle REFRESHING crabs
+		  if ((Timing.currentTimeMillis() >= REFRESH_TIME) || REFRESHING || FAILED_WAKES > 9) {
+			  REFRESHING = true;
 			  return State.REFRESH_CRABS;
 		  }
 		  // handle waking a crab
@@ -374,7 +267,7 @@ public class FlawlessRockCrabKiller extends Script implements Painting {
 	  return State.SOMETHING_WENT_WRONG;
   }
 	  
-   enum State {
+   public enum State {
         WALK_TO_BANK,
         WALK_TO_ROCKS,
         DEPOSIT_ITEMS,
@@ -402,13 +295,9 @@ public class FlawlessRockCrabKiller extends Script implements Painting {
    }
    
    private boolean navigatePath() {
-	   // first attempt to use our refresh methods to get there
-		if (refreshForest()) {
-			return true;
-		}
 		// if for some reason they fail, use custom checkpoints
-		if (Walking.walkTo(checkpoint_one.getRandomTile())) {
-			if (Walking.walkTo(checkpoint_two.getRandomTile())) {
+		if (Walking.walkTo(BADAreas.CRABS_WALK_CHECKPOINT_ONE.getRandomTile())) {
+			if (Walking.walkTo(BADAreas.CRAB_WALK_CHECKPOINT_TWO.getRandomTile())) {
 				return true;
 			}
 		}
@@ -418,15 +307,15 @@ public class FlawlessRockCrabKiller extends Script implements Painting {
    
    private boolean refreshForest() {
 	   // use the forest to refresh crabs
-		if (WebWalking.walkTo(refresh_crabs_area.getRandomTile())) {
+		if (TRANSPORT.walkPath(TRANSPORT.nav().findPath(BADAreas.REFRESH_CRABS_AREA.getRandomTile()))) {
 			println("Web walked to forest");
-			refreshing = false;
+			REFRESHING = false;
 			return true;
 		} else {
 			println("Custom pathing to forest");
 			// walk with a custom path
-			if (Walking.walkPath(transport.generateRandomStraightPath(refresh_crabs_area.getRandomTile(), 1, 1))) {
-				refreshing = false;
+			if (Walking.walkPath(TRANSPORT.generateRandomStraightPath(BADAreas.REFRESH_CRABS_AREA.getRandomTile(), 1, 1))) {
+				REFRESHING = false;
 				return true;
 			};
 		}
@@ -438,16 +327,16 @@ public class FlawlessRockCrabKiller extends Script implements Painting {
 	   // attempt to refresh using the tunnel
 		if (walkToTunnel()) {
 			println("Walked to tunnel");
-            Timing.waitCondition(outside_tunnel, General.random(8000, 12000));
+            Timing.waitCondition(BADConditions.inArea(BADAreas.EAST_CRABS_TUNNEL_AREA), General.random(8000, 12000));
             // enter tunnel
 			if (enterTunnel()) {
 				println("Entered tunnel");
-				Timing.waitCondition(inside_tunnel, General.random(8000, 12000));
+				Timing.waitCondition(BADConditions.playerPositionIs(BADAreas.CRABS_TUNNEL_ENTERANCE_TILE), General.random(8000, 12000));
 				// exit tunnel
 				if (exitTunnel()) {
 					println("Exited tunnel");
-					refreshing = false;
-					Timing.waitCondition(outside_tunnel, General.random(8000, 12000));
+					REFRESHING = false;
+					Timing.waitCondition(BADConditions.inArea(BADAreas.EAST_CRABS_TUNNEL_AREA), General.random(8000, 12000));
 					return true;
 				}
 			}
@@ -458,7 +347,7 @@ public class FlawlessRockCrabKiller extends Script implements Painting {
    
    private void walkToRocks() {
 	   // attempt to walk to the crab area with a randomized path to avoid bans
-		if (Walking.walkPath(transport.generateRandomStraightPath(rock_crabs_area.getRandomTile(), 3, 1))) {
+		if (Walking.walkPath(TRANSPORT.generateRandomStraightPath(BADAreas.EAST_ROCK_CRABS_AREA.getRandomTile(), 3, 1))) {
 			println("Walked custom randomized path");
 		} else {
 			println("Failed to walk custom randomized path");
@@ -482,7 +371,7 @@ public class FlawlessRockCrabKiller extends Script implements Painting {
 				   if (!actionsContainOption(crab_definition.getActions(), "Attack")){
 					   // check to see if we should use the closest, or next closest
 					   if (i+1 < crabs.length) {
-						   return ab.handleUseClosest(crabs[i], crabs[i+1]);
+						   return AB.handleUseClosest(crabs[i], crabs[i+1]);
 					   }
 					   
 					   return crabs[i];
@@ -512,17 +401,18 @@ public class FlawlessRockCrabKiller extends Script implements Painting {
 	   RSNPC[] crabs = crabs();
 	   
 	   if (crabs.length > 0) {
-		   transport.checkRun();
+		   TRANSPORT.checkRun();
 		   // cache the crab so we can see if it woke for us
 		   RSNPC crab = findAttackableCrab(crabs);
 		   // switch between screen and minimap clicks
 		   switch (General.random(1, 2)) {
 		   	   case 1:
 		   		   println("Attempting to minimap click to wake crab");
+		   		   TRANSPORT.checkRun();
 		   		   // use a function for a chance at getting a random adjacent tile to the crab
-				   if (transport.normalWalk(getAdjacent(crab.getPosition()))) {
+				   if (TRANSPORT.webWalking(getAdjacent(crab.getPosition()))) {
 					   // wait for the attack
-		               Timing.waitCondition(attackable_crab, General.random(10000, 12000));
+		               Timing.waitCondition(BADConditions.attackableEnemy(crab), General.random(10000, 12000));
 		               println("Attempting to attack crab after minimap wake");
 				   };
 				   break;
@@ -530,40 +420,31 @@ public class FlawlessRockCrabKiller extends Script implements Painting {
 		   		   println("Attempting to screen click to wake crab");
 		   		   // use a function for a chance at getting a random adjacent tile to the crab
 				   if (Walking.clickTileMS(getAdjacent(crab.getPosition()), "Walk here")) {
-		               Timing.waitCondition(attackable_crab, General.random(6000, 8000));
+		               Timing.waitCondition(BADConditions.attackableEnemy(crab), General.random(6000, 8000));
 			   		   println("Attempting to awake crab after screen click wake");
 				   };
 		   
 		   }
-		   // ensure we are waking crabs up, if not we will refresh
-		   if (clicker.actionsContainOption(crab.getActions(), "Attack")) {
-			   println("Woke crab successfully!");
-			   // we woke the crab!
-			   failed_wakes = 0;
+		   
+		   // wait to see if we can enter combat
+		   if (Timing.waitCondition(BADConditions.isFighting(), General.random(3000, 5000))) {
+			   // ensure we are waking crabs up, if not we will refresh
+			   FAILED_WAKES = 0;
+			   println("Woke crab successfully");
+
 		   } else {
 			   println("Failed to wake crab");
-			   // we must have failed to wake the crab
-			   failed_wakes++;
+			   FAILED_WAKES++;
 		   }
 	   }
    }
    
-   private boolean attackCrab(RSNPC crab) {
-	   if (!crab.isInCombat() || crab.isInteractingWithMe()) {
-		   // handle wait between switching attack targets
-		   ab.handleSwitchObjectCombatDelay();
-		   return crab.click("Attack");
-	   }
-	   
-	   return false;
-   }
-   
    private RSNPC[] crabs() {
-	   return NPCs.findNearest(Filters.NPCs.nameContains("Rock").combine(Filters.NPCs.inArea(rock_crabs_area), true).combine(Filters.NPCs.nameNotContains("olem"), true));
+	   return NPCs.findNearest(Filters.NPCs.nameContains("Rock").combine(Filters.NPCs.inArea(BADAreas.EAST_ROCK_CRABS_AREA), true).combine(Filters.NPCs.nameNotContains("olem"), true));
    }
    
    private boolean atCrabs() {
-	   return rock_crabs_area.contains(Player.getPosition());
+	   return BADAreas.EAST_ROCK_CRABS_AREA.contains(Player.getPosition());
    }
    
    private boolean busy() {
@@ -611,12 +492,12 @@ public class FlawlessRockCrabKiller extends Script implements Painting {
    }
    
    private RSItem[] inventory() {
-	   return Inventory.find(Filters.Items.nameNotEquals(food, tab).combine(Filters.Items.nameNotContains(potion), true));
+	   return Inventory.find(Filters.Items.nameNotEquals(FOOD, TAB).combine(Filters.Items.nameNotContains(POTION), true));
    }
    
    private boolean needsTeleport() {
-	   println(Inventory.getCount(tab) < 1);
-	   return Inventory.getCount(tab) < 1;
+	   println(Inventory.getCount(TAB) < 1);
+	   return Inventory.getCount(TAB) < 1;
    }
    
    private boolean outOfFood() {
@@ -624,21 +505,15 @@ public class FlawlessRockCrabKiller extends Script implements Painting {
    }
    
    private boolean needsPotions() {
-	   return Inventory.find(Filters.Items.nameContains(potion)).length < 1;
+	   return Inventory.find(Filters.Items.nameContains(POTION)).length < 1;
    }
    
    private boolean teleport() {
-	   // find tabs
-	   RSItem[] teleport = Inventory.find(Filters.Items.nameEquals(tab));
+	   // find TABs
+	   RSItem[] teleport = Inventory.find(Filters.Items.nameEquals(TAB));
 	   // null check
-	   if (teleport.length > 0) {
-		   // hover tab
-		   if (teleport[0].hover()) {
-			   // click tab
-			   if (teleport[0].click("Teleport")) {
-				   return true;
-			   }
-		   }
+	   if (teleport.length > 0 && teleport[0].hover() && teleport[0].click("Teleport")) {
+		   return true;
 	   }
 	   
 	   return false;
@@ -666,7 +541,7 @@ public class FlawlessRockCrabKiller extends Script implements Painting {
 			// iterate cannons
 			for (int i = 0; i < cannon.length; i++) {
 				// ensure they are in the same area we are killing crabs in
-				if (rock_crabs_area.contains(cannon[i].getPosition())) {
+				if (BADAreas.EAST_ROCK_CRABS_AREA.contains(cannon[i].getPosition())) {
 					return true;
 				}
 			}
@@ -684,17 +559,17 @@ public class FlawlessRockCrabKiller extends Script implements Painting {
 	}
 	
 	private void setGuiVars() {
-		food = gui.getFoodName();
-		use_potions = gui.usePotions();
+		FOOD = GUI.getFoodName();
+		USE_POTIONS = GUI.usePotions();
 	}
 	
 	@SuppressWarnings("deprecation")
 	public boolean eat() {
 		// eat based on abc utils
-		if (healthPercent() < ab.abc.INT_TRACKER.NEXT_EAT_AT.next()) {
+		if (healthPercent() < AB.abc.INT_TRACKER.NEXT_EAT_AT.next()) {
 			if (eatFood()) {
 				println("Ate food");
-				ab.abc.INT_TRACKER.NEXT_EAT_AT.reset();
+				AB.abc.INT_TRACKER.NEXT_EAT_AT.reset();
 				return true;
 			};
 		}
@@ -704,23 +579,17 @@ public class FlawlessRockCrabKiller extends Script implements Painting {
 	
 	public boolean eatFood() {
 	   println("Eating food");
-	   RSItem[] foods = Inventory.find(food);
+	   RSItem[] foods = Inventory.find(FOOD);
 	   // null check
-	   if (foods.length > 0) {
-			// hover the food
-			if (foods[0].hover()) {
-				// click the food
-				if (foods[0].click("Eat")) {
-					return true;
-				}
-			}
+	   if (foods.length > 0 && foods[0].hover() && foods[0].click("Eat")) {
+			return true;
 		}
 		
 		return false;
 	}
 	
 	public boolean walkToTunnel() {
-		return Walking.walkPath(transport.generateRandomStraightPath(tunnel_area.getRandomTile(), 1, 1));
+		return Walking.walkPath(TRANSPORT.generateRandomStraightPath(BADAreas.EAST_CRABS_TUNNEL_AREA.getRandomTile(), 1, 1));
 	}
 	
 	public boolean exitTunnel() {
@@ -731,7 +600,7 @@ public class FlawlessRockCrabKiller extends Script implements Painting {
 			// try to enter the tunnel (from the inside, so exit)
 			if (DynamicClicking.clickRSObject(tunnel[0], "Enter")) {
 				// wait until we are outside
-				Timing.waitCondition(outside_tunnel, General.random(10000, 12000));
+				Timing.waitCondition(BADConditions.inArea(BADAreas.EAST_CRABS_TUNNEL_AREA), General.random(10000, 12000));
 				return true;
 			}
 		}
@@ -758,18 +627,9 @@ public class FlawlessRockCrabKiller extends Script implements Painting {
 			// try to enter the tunnel
 			if (DynamicClicking.clickRSObject(tunnel[0], "Enter")) {
 				// wait until we're inside
-				Timing.waitCondition(inside_tunnel, General.random(10000, 12000));
+				Timing.waitCondition(BADConditions.playerPositionIs(BADAreas.CRABS_TUNNEL_ENTERANCE_TILE), General.random(10000, 12000));
 				return true;
 			}
-		}
-		
-		return false;
-	}
-	
-	public boolean skillIsAtBase(Skills.SKILLS skill) {
-		// compare skill levels to actual level to see if we are boosted
-		if (Skills.getCurrentLevel(skill) == Skills.getActualLevel(skill)) {
-			return true;
 		}
 		
 		return false;
@@ -787,13 +647,13 @@ public class FlawlessRockCrabKiller extends Script implements Painting {
 	
 	public boolean usePotion() {
 		// get potions from inventory
-		RSItem[] pot = Inventory.find(Filters.Items.nameContains(potion));
+		RSItem[] pot = Inventory.find(Filters.Items.nameContains(POTION));
 		// null check
 		if (pot.length > 0) {
 			// try to drink the potion
 			if (pot[0].click("Drink")) {
 				// wait condition
-				Timing.waitCondition(potion_drank, 3000);
+				Timing.waitCondition(BADConditions.combatPotionDrank(), 3000);
 				return true;
 			}
 		}
@@ -803,7 +663,7 @@ public class FlawlessRockCrabKiller extends Script implements Painting {
 	
 	public boolean shouldUsePotion() {
 		// determine if we should drink a potion
-		if (skillIsAtBase(Skills.SKILLS.ATTACK) || skillIsAtBase(Skills.SKILLS.STRENGTH)) {
+		if (TRACKER.skillIsAtBase(Skills.SKILLS.ATTACK) || TRACKER.skillIsAtBase(Skills.SKILLS.STRENGTH)) {
 			return true;
 		}
 		
@@ -812,7 +672,7 @@ public class FlawlessRockCrabKiller extends Script implements Painting {
 	
 	public boolean detectPlayers() {
 		// return a bool to determine if we should hop based on the number of players
-		if (countPlayers() > 6) {
+		if (countPlayers() > 5) {
 			return true;
 		}
 		
@@ -824,7 +684,7 @@ public class FlawlessRockCrabKiller extends Script implements Painting {
 	}
 	
 	public RSPlayer[] players() {
-		return Players.getAll(Filters.Players.inArea(rock_crabs_area));
+		return Players.getAll(Filters.Players.inArea(BADAreas.EAST_ROCK_CRABS_AREA));
 	}
 	
 	private boolean hop() {
@@ -838,24 +698,6 @@ public class FlawlessRockCrabKiller extends Script implements Painting {
 	}
 	
 	private void resetRefreshTime() {
-		refresh_time = Timing.currentTimeMillis() + refreshRandom();
+		REFRESH_TIME = Timing.currentTimeMillis() + refreshRandom();
 	}
-	
-	@Override
-	public void onPaint(Graphics g) {
-		
-       // set variables for display
-       long run_time = System.currentTimeMillis() - startTime;
-//       long xp_hr = 
-       long time_by_hour = 3600000/run_time;
-       long xp_by_hour = XP.getTotalGainedXp()*time_by_hour;
-       g.setFont(font);
-       g.setColor(new Color(0, 0, 0));
-
-       g.drawString("Run Time: " + Timing.msToString(run_time), 40, 360);
-       g.drawString("Script State: " + state, 220, 360);
-       g.drawString("Experience gained: "+XP.getTotalGainedXp()+" ("+xp_by_hour+")", 40, 340);
-       g.drawString("Crabs Killed: "+(XP.getTotalGainedXp()/250)+" ("+(xp_by_hour/250)+")", 310, 340);
-	}
-	
 }

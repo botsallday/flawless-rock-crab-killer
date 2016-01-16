@@ -1,4 +1,4 @@
-package scripts;
+package scripts.BADFlawlessRockCrabs.api.fcworldhopper;
 
 import java.awt.Rectangle;
 import java.util.HashMap;

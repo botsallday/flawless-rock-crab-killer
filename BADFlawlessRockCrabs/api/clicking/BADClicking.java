@@ -1,9 +1,8 @@
-package scripts;
+package scripts.BADFlawlessRockCrabs.api.clicking;
 
 import org.tribot.api.DynamicClicking;
 import org.tribot.api.General;
 import org.tribot.api.Timing;
-import org.tribot.api.rs3.WebWalking;
 import org.tribot.api.types.generic.Condition;
 import org.tribot.api2007.Inventory;
 import org.tribot.api2007.Objects;
@@ -15,14 +14,10 @@ import org.tribot.api2007.types.RSItemDefinition;
 import org.tribot.api2007.types.RSObject;
 import org.tribot.api2007.Camera;
 import org.tribot.api2007.Equipment;
-import org.tribot.api2007.Game;
 import org.tribot.api2007.GroundItems;
 
 
-public class Clicking {
-	Clicking() {
-		
-	}
+public class BADClicking {
 	
    public boolean actionsContainOption(String[] actions, String key) {
 	   for (int i = 0; i < actions.length; i++) {
