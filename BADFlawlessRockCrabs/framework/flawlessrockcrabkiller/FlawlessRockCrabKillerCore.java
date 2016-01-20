@@ -1,6 +1,5 @@
 package scripts.BADFlawlessRockCrabs.framework.flawlessrockcrabkiller;
 
-import org.tribot.script.Script;
 import scripts.BADFlawlessRockCrabs.api.antiban.BADAntiBan;
 import scripts.BADFlawlessRockCrabs.api.areas.BADAreas;
 import scripts.BADFlawlessRockCrabs.api.banking.BADBanking;
@@ -25,6 +24,7 @@ import org.tribot.api2007.Player;
 import org.tribot.api2007.Players;
 import org.tribot.api2007.Skills;
 import org.tribot.api2007.Walking;
+import org.tribot.api2007.WebWalking;
 import org.tribot.api2007.WorldHopper;
 import org.tribot.api2007.ext.Filters;
 import org.tribot.api2007.types.RSItem;
@@ -34,17 +34,15 @@ import org.tribot.api2007.types.RSObject;
 import org.tribot.api2007.types.RSPlayer;
 import org.tribot.api2007.types.RSTile;
 
-public class FlawlessRockCrabKillerCore extends Script {
+public class FlawlessRockCrabKillerCore {
 	
 	private BADBanking BANKER = new BADBanking();
 	private BADTransportation TRANSPORT = new BADTransportation();
 	private BADAntiBan AB = new BADAntiBan();
-	private BADClicking CLICKER = new BADClicking();
 	
 	private boolean USE_POTIONS;
 	private boolean REFRESHING;
 	private boolean EXECUTE = true;
-	private State state;
 	private long REFRESH_TIME = Timing.currentTimeMillis() + refreshRandom();
 	private int FAILED_WAKES = 0;
 	private String FOOD;
@@ -65,18 +63,17 @@ public class FlawlessRockCrabKillerCore extends Script {
 		return EXECUTE;
 	}
 	
-	@Override
 	public void run() {
 		GUI.setVisible(true);
 		while (GUI.isVisible()) {
-			sleep(100);
-			println("Waiting for GUI");
+			General.sleep(100);
+			General.println("Waiting for GUI");
 		}
 		setGuiVars();
 		AB.setHoverSkill(Skills.SKILLS.HITPOINTS);
 		
 		while (EXECUTE) {
-			sleep(50);
+			General.sleep(50);
 			switch (state()) {
 				case LOGIN:
 					Timing.waitCondition(BADConditions.isLoggedIn(), 10000);
@@ -128,7 +125,7 @@ public class FlawlessRockCrabKillerCore extends Script {
 					break;
 				case REFRESH_CRABS:
 					TRANSPORT.checkRun();
-					println("Refreshing crabs");
+					General.println("Refreshing crabs");
 					
 					if (refreshForest()) {
 						resetRefreshTime();
@@ -149,7 +146,7 @@ public class FlawlessRockCrabKillerCore extends Script {
 					EXECUTE = false;
 					break;
 				case DEAD:
-					println("You died!");
+					General.println("You died!");
 					EXECUTE = false;
 					break;
 				case DEPOSIT_ITEMS:
@@ -158,7 +155,7 @@ public class FlawlessRockCrabKillerCore extends Script {
 					};
 					break;
 				case CANNON_DETECTED:
-					println("Trying to hop worlds because of cannon");
+					General.println("Trying to hop worlds because of cannon");
 					hop();
 					break;
 				case TOO_MANY_PLAYERS:
@@ -166,7 +163,7 @@ public class FlawlessRockCrabKillerCore extends Script {
 					break;
 				case NAVIGATE_PATH:
 					if (navigatePath()) {
-						println("Navigated path");
+						General.println("Navigated path");
 					}
 					break;
 				case TURN_ON_AUTO:
@@ -218,7 +215,7 @@ public class FlawlessRockCrabKillerCore extends Script {
 		  if (Banking.isInBank()) {
 			  // deposit items that we don't need to take with us
 			  if (inventoryContainsBadItems()) {
-				  println("Has bad items");
+				  General.println("Has bad items");
 				  return State.DEPOSIT_ITEMS;
 			  }
 			  // see if we need to withdraw supplies
@@ -294,25 +291,47 @@ public class FlawlessRockCrabKillerCore extends Script {
 	   return General.random(420000, 580000);
    }
    
+   private RSTile[] generateNavigationPath() {
+	   RSTile[] path = {
+			   BADAreas.CRABS_WALK_CHECKPOINT_ONE.getRandomTile(), 
+			   BADAreas.CRAB_WALK_CHECKPOINT_TWO.getRandomTile(),
+			   BADAreas.CRAB_WALK_CHECKPOINT_THREE.getRandomTile(),
+			   BADAreas.CRAB_WALK_CHECKPOINT_FOUR.getRandomTile(),
+			   BADAreas.CRAB_WALK_CHECKPOINT_FIVE.getRandomTile(),
+			   BADAreas.CRAB_WALK_CHECKPOINT_SIX.getRandomTile(),
+	   };
+   
+	   return path;
+   }
+   
    private boolean navigatePath() {
-		// if for some reason they fail, use custom checkpoints
-		if (Walking.walkTo(BADAreas.CRABS_WALK_CHECKPOINT_ONE.getRandomTile())) {
-			if (Walking.walkTo(BADAreas.CRAB_WALK_CHECKPOINT_TWO.getRandomTile())) {
-				return true;
-			}
-		}
-		
-		return false;
+	   General.println("Navigating path");
+	   
+	   RSTile[] path = generateNavigationPath();
+	   boolean success = true;
+	   General.println("Starting navigation");
+	   
+	   for (int i=0; i<path.length; i++) {
+		   if (Walking.blindWalkTo(path[i])) {
+			   General.println("Walking path"+" "+i);
+		   } else {
+			   General.println("fail");
+			   success = false;
+			   break;
+		   }
+	   }
+	   
+		return success;
    }
    
    private boolean refreshForest() {
 	   // use the forest to refresh crabs
 		if (TRANSPORT.walkPath(TRANSPORT.nav().findPath(BADAreas.REFRESH_CRABS_AREA.getRandomTile()))) {
-			println("Web walked to forest");
+			General.println("Web walked to forest");
 			REFRESHING = false;
 			return true;
 		} else {
-			println("Custom pathing to forest");
+			General.println("Custom pathing to forest");
 			// walk with a custom path
 			if (Walking.walkPath(TRANSPORT.generateRandomStraightPath(BADAreas.REFRESH_CRABS_AREA.getRandomTile(), 1, 1))) {
 				REFRESHING = false;
@@ -326,15 +345,15 @@ public class FlawlessRockCrabKillerCore extends Script {
    private boolean refreshTunnel() {
 	   // attempt to refresh using the tunnel
 		if (walkToTunnel()) {
-			println("Walked to tunnel");
+			General.println("Walked to tunnel");
             Timing.waitCondition(BADConditions.inArea(BADAreas.EAST_CRABS_TUNNEL_AREA), General.random(8000, 12000));
             // enter tunnel
 			if (enterTunnel()) {
-				println("Entered tunnel");
+				General.println("Entered tunnel");
 				Timing.waitCondition(BADConditions.playerPositionIs(BADAreas.CRABS_TUNNEL_ENTERANCE_TILE), General.random(8000, 12000));
 				// exit tunnel
 				if (exitTunnel()) {
-					println("Exited tunnel");
+					General.println("Exited tunnel");
 					REFRESHING = false;
 					Timing.waitCondition(BADConditions.inArea(BADAreas.EAST_CRABS_TUNNEL_AREA), General.random(8000, 12000));
 					return true;
@@ -348,9 +367,9 @@ public class FlawlessRockCrabKillerCore extends Script {
    private void walkToRocks() {
 	   // attempt to walk to the crab area with a randomized path to avoid bans
 		if (Walking.walkPath(TRANSPORT.generateRandomStraightPath(BADAreas.EAST_ROCK_CRABS_AREA.getRandomTile(), 3, 1))) {
-			println("Walked custom randomized path");
+			General.println("Walked custom randomized path");
 		} else {
-			println("Failed to walk custom randomized path");
+			General.println("Failed to walk custom randomized path");
 		}
    }
    
@@ -407,21 +426,21 @@ public class FlawlessRockCrabKillerCore extends Script {
 		   // switch between screen and minimap clicks
 		   switch (General.random(1, 2)) {
 		   	   case 1:
-		   		   println("Attempting to minimap click to wake crab");
+		   		   General.println("Attempting to minimap click to wake crab");
 		   		   TRANSPORT.checkRun();
 		   		   // use a function for a chance at getting a random adjacent tile to the crab
 				   if (TRANSPORT.webWalking(getAdjacent(crab.getPosition()))) {
 					   // wait for the attack
 		               Timing.waitCondition(BADConditions.attackableEnemy(crab), General.random(10000, 12000));
-		               println("Attempting to attack crab after minimap wake");
+		               General.println("Attempting to attack crab after minimap wake");
 				   };
 				   break;
 		   	   case 2:
-		   		   println("Attempting to screen click to wake crab");
+		   		   General.println("Attempting to screen click to wake crab");
 		   		   // use a function for a chance at getting a random adjacent tile to the crab
 				   if (Walking.clickTileMS(getAdjacent(crab.getPosition()), "Walk here")) {
 		               Timing.waitCondition(BADConditions.attackableEnemy(crab), General.random(6000, 8000));
-			   		   println("Attempting to awake crab after screen click wake");
+			   		   General.println("Attempting to awake crab after screen click wake");
 				   };
 		   
 		   }
@@ -430,10 +449,10 @@ public class FlawlessRockCrabKillerCore extends Script {
 		   if (Timing.waitCondition(BADConditions.isFighting(), General.random(3000, 5000))) {
 			   // ensure we are waking crabs up, if not we will refresh
 			   FAILED_WAKES = 0;
-			   println("Woke crab successfully");
+			   General.println("Woke crab successfully");
 
 		   } else {
-			   println("Failed to wake crab");
+			   General.println("Failed to wake crab");
 			   FAILED_WAKES++;
 		   }
 	   }
@@ -496,7 +515,6 @@ public class FlawlessRockCrabKillerCore extends Script {
    }
    
    private boolean needsTeleport() {
-	   println(Inventory.getCount(TAB) < 1);
 	   return Inventory.getCount(TAB) < 1;
    }
    
@@ -568,7 +586,7 @@ public class FlawlessRockCrabKillerCore extends Script {
 		// eat based on abc utils
 		if (healthPercent() < AB.abc.INT_TRACKER.NEXT_EAT_AT.next()) {
 			if (eatFood()) {
-				println("Ate food");
+				General.println("Ate food");
 				AB.abc.INT_TRACKER.NEXT_EAT_AT.reset();
 				return true;
 			};
@@ -578,7 +596,7 @@ public class FlawlessRockCrabKillerCore extends Script {
 	}
 	
 	public boolean eatFood() {
-	   println("Eating food");
+	   General.println("Eating food");
 	   RSItem[] foods = Inventory.find(FOOD);
 	   // null check
 	   if (foods.length > 0 && foods[0].hover() && foods[0].click("Eat")) {
@@ -610,7 +628,7 @@ public class FlawlessRockCrabKillerCore extends Script {
 	
    public boolean actionsContainOption(String[] actions, String key) {
 	   for (int i = 0; i < actions.length; i++) {
-		   println(actions[i]);
+		   General.println(actions[i]);
 		   if (actions[i].contains(key)) {
 			   return true;
 		   }
@@ -690,7 +708,7 @@ public class FlawlessRockCrabKillerCore extends Script {
 	private boolean hop() {
 		// use the lovely FC game hopper
 		if (FCInGameHopper.hop(WorldHopper.getRandomWorld(true, false))) {;
-			println("Hopped successfully!");
+			General.println("Hopped successfully!");
 			return true;
 		}
 		

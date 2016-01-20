@@ -17,6 +17,13 @@ public class BADAreas {
     public static final RSArea EAST_ROCK_CRABS_AREA = new RSArea(new RSTile(2697, 3711, 0), new RSTile(2719, 3727, 0));
 	public static final RSArea EAST_CRABS_TUNNEL_AREA = new RSArea(new RSTile(2730, 3714, 0), new RSTile(2730, 3710, 0));
 	public static final RSTile CRABS_TUNNEL_ENTERANCE_TILE = new RSTile(2773, 10162);
-	public static final RSArea CRABS_WALK_CHECKPOINT_ONE = new RSArea(new RSTile(2682, 3545, 0), new RSTile(2688, 3541, 0));
-	public static final RSArea CRAB_WALK_CHECKPOINT_TWO = new RSArea(new RSTile(2663, 3624, 0), new RSTile(2669, 3625, 0));
+	public static final RSArea CRABS_WALK_CHECKPOINT_ONE = new RSArea(new RSTile(2702, 3502, 0), new RSTile(2704, 3505, 0));
+	public static final RSArea CRAB_WALK_CHECKPOINT_TWO = new RSArea(new RSTile(2682, 3517, 0), new RSTile(2685, 3520, 0));
+	public static final RSArea CRAB_WALK_CHECKPOINT_THREE = new RSArea(new RSTile(2673, 3549, 0), new RSTile(2676, 3553, 0));
+	public static final RSArea CRAB_WALK_CHECKPOINT_FOUR = new RSArea(new RSTile(2652, 3601, 0), new RSTile(2656, 3606, 0));
+	public static final RSArea CRAB_WALK_CHECKPOINT_FIVE = new RSArea(new RSTile(2683, 3633, 0), new RSTile(2689, 3636, 0));
+	public static final RSArea CRAB_WALK_CHECKPOINT_SIX = new RSArea(new RSTile(2708, 3636, 0), new RSTile(2716, 3645, 0));
+
+
+
 }
