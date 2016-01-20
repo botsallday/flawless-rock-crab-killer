@@ -33,13 +33,13 @@ import org.tribot.api2007.types.RSNPCDefinition;
 import org.tribot.api2007.types.RSObject;
 import org.tribot.api2007.types.RSPlayer;
 import org.tribot.api2007.types.RSTile;
+import org.tribot.script.Script;
 
 public class FlawlessRockCrabKillerCore {
 	
 	private BADBanking BANKER = new BADBanking();
 	private BADTransportation TRANSPORT = new BADTransportation();
 	private BADAntiBan AB = new BADAntiBan();
-	
 	private boolean USE_POTIONS;
 	private boolean REFRESHING;
 	private boolean EXECUTE = true;
@@ -58,7 +58,7 @@ public class FlawlessRockCrabKillerCore {
         	return Inventory.find(Filters.Items.nameNotEquals(FOOD, TAB)).length < 2;
         }
 	};
-
+	
 	public boolean executing() {
 		return EXECUTE;
 	}
@@ -141,6 +141,7 @@ public class FlawlessRockCrabKillerCore {
 					if (USE_POTIONS) {
 						checkPotion();
 					}
+					handleHoverNext();
 					break;
 				case SOMETHING_WENT_WRONG:
 					EXECUTE = false;
@@ -243,6 +244,12 @@ public class FlawlessRockCrabKillerCore {
 			  REFRESHING = true;
 			  return State.REFRESH_CRABS;
 		  }
+		  // handle antiban moving to anticipated location (presumably after we kill a crab
+		  if (AB.abc.BOOL_TRACKER.GO_TO_ANTICIPATED.next() && atCrabs()) {
+			  // walk to a location within the combat area to the next anticipated crab
+			  AB.abc.BOOL_TRACKER.GO_TO_ANTICIPATED.reset();
+			  return State.WALK_TO_ROCKS;
+		  }
 		  // handle waking a crab
 		  if (atCrabs()) {
 			  return State.WAKE_CRAB;
@@ -302,6 +309,34 @@ public class FlawlessRockCrabKillerCore {
 	   };
    
 	   return path;
+   }
+   
+   private void handleHoverNext() {
+	   if (AB.abc.BOOL_TRACKER.HOVER_NEXT.next()) {
+		   // handle hovering the next target
+		   RSNPC target = findHoverTarget();
+		   
+		   if (target != null) {
+			   if (target.hover()) {
+				   Timing.waitCondition(BADConditions.crosshairChange(), General.random(4000, 6000));
+				   AB.abc.BOOL_TRACKER.HOVER_NEXT.reset();
+			   }
+		   }
+	   }
+   }
+   
+   private RSNPC findHoverTarget() {
+	   RSNPC[] crabs = crabs();
+	   
+	   if (crabs.length > 0) {
+		   for (int i = 0; i < crabs.length; i++) {
+			   if (!crabs[i].isInteractingWithMe() && crabs[i].isOnScreen()) {
+				   return crabs[i];
+			   }
+		   }
+	   }
+	   
+	   return crabs[0];
    }
    
    private boolean navigatePath() {
